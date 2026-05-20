@@ -1,18 +1,27 @@
 from django.shortcuts import render
 import json
+import base64
+import io
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-client = genai.Client()
+import os
+load_dotenv()
 
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
+)
+print("API KEY =", os.getenv("GEMINI_API_KEY"))
 
 def slide_builder(request):
     return render(request, 'slide_builder.html')
 
 
 def _generate_slide_titles(topic: str) -> list[str]:
+    
+    print("API KEY =", os.getenv("GEMINI_API_KEY"))
     prompt = f"""
 You generate slide titles for presentations.
 
@@ -78,29 +87,18 @@ def generate_slides(request):
     if not topic:
         topic = "random topic"
 
-    titles = [
-        f"Introduction to {topic}",
-        f"Core ideas of {topic}",
-        f"How {topic} works",
-        f"Use cases of {topic}",
-        f"Future of {topic}",
-    ]
-
+    print(f"Topic form client : {topic}")
+    titles = _generate_slide_titles(topic)
+    print(f"Titles from AI: {titles}")
+    
     slides = []
 
     for idx, title in enumerate(titles):
-        image_url = _generate_slide_image(title, topic)
-
-        if image_url is None:
-            image_url = (
-                "https://images.unsplash.com/photo-1635070041078-e363dbe005cb"
-                "?auto=format&fit=crop&w=800&q=80"
-            )
-
+       #image_url = _generate_slide_image(title, topic)
         slides.append({
             "id": idx,
             "title": title,
-            "image": image_url,
+            "image":"https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80",
         })
 
     return JsonResponse({"slides": slides})
