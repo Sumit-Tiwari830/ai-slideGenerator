@@ -3,9 +3,64 @@ import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
+from google import genai
+from google.genai import types
+client = genai.Client()
+
 
 def slide_builder(request):
     return render(request, 'slide_builder.html')
+
+
+def _generate_slide_titles(topic: str) -> list[str]:
+    prompt = f"""
+You generate slide titles for presentations.
+
+Return exactly five slide titles for a beginner friendly talk about "{topic}".
+
+MUST return ONLY valid JSON in this exact structure:
+
+{{
+  "slides": [
+    {{"title": "..." }},
+    {{"title": "..." }},
+    {{"title": "..." }},
+    {{"title": "..." }},
+    {{"title": "..." }}
+  ]
+}}
+"""
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[{"text": prompt}],
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+
+        raw = ""
+        for part in response.parts:
+            if part.text:
+                raw += part.text.strip()
+
+        print("Raw title generation response:", raw)
+
+        data = json.loads(raw)
+        titles = [s["title"] for s in data.get("slides", []) if "title" in s]
+
+        if len(titles) == 5:
+            return titles
+        
+    except Exception as e:
+        print("Title generation failed:", e)
+
+    return [
+        f"Introduction to {topic}",
+        f"Core ideas of {topic}",
+        f"How {topic} works",
+        f"Use cases of {topic}",
+        f"Future of {topic}",
+    ]
 
 
 @csrf_exempt
